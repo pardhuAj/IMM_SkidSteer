@@ -1,6 +1,6 @@
-function weights = IMM_Skid_Steer_func(Input, Output,t,dt)
+function weights = IMM_Skid_Steer_func(Input, Output,t,dt,m1)
 U = Input; % Input signal ground truth
-y = Output; % output signal ground truth
+y_gt = Output; % output signal ground truth
 % global K1 M1 K2 M2 K3 M3 K4 M4;
 % Model 1 
 
@@ -37,15 +37,15 @@ upsilon = [0 0;
 % end
 % [t1,x1]=ode45(@(t1,x1) odefun(t1,x1,t,U, dt, q),t,zeros(5,1));
 r = 0.001; % measurement noise covariance
-m = 2; % available measurements
+m = m1; % available measurements
 t1 = t;
 %% IMM filters
 np = 4; % 4 banks of EKFs in IMM filter
 R = eye(m)*r ; % Measurement noise covarince matrix isotropic homogenous measurement noise
 K = [K1 K2 K3 K4;
     M1 M2 M3 M4];
-Q = upsilon*q*eye(2)*upsilon'; % process noise
-
+Q = upsilon*q*dt*eye(2)*upsilon'; % process noise
+y = y_gt + sqrt(r)*randn(m,length(t));
 X_hat = zeros(n,length(t1));
 P_hat = zeros(n,n,length(t1));
 
@@ -126,12 +126,13 @@ for i = 1:length(t)
 
 %    X_hat(:,i) = weight(1)*X_hat_bank(:,1,i) + weight(2)*X_hat_bank(:,2,i) + weight(3)*X_hat_bank(:,3,i) + weight(4)*X_hat_bank(:,4,i) ;
    X_hat(:,i) = k; % Updated states 
-   e1 = X_hat_bank(:,1,i)-X_hat(:,i);
-   e2 = X_hat_bank(:,2,i)-X_hat(:,i);
-   e3 = X_hat_bank(:,3,i)-X_hat(:,i);
-   e4 = X_hat_bank(:,4,i)-X_hat(:,i);
+   % e1 = X_hat_bank(:,1,i)-X_hat(:,i);
+   % e2 = X_hat_bank(:,2,i)-X_hat(:,i);
+   % e3 = X_hat_bank(:,3,i)-X_hat(:,i);
+   % e4 = X_hat_bank(:,4,i)-X_hat(:,i);
    for j = 1:np
-      P_plus_dum = P_plus_dum + weight(j)*((X_hat_bank(:,j,i)-X_hat(:,i)) + P_plus_bank(:,:,j));    
+      P_plus_dum = P_plus_dum + weight(j)*((X_hat_bank(:,j,i)-X_hat(:,i))...
+          *(X_hat_bank(:,j,i)-X_hat(:,i))' + P_plus_bank(:,:,j));    
    end
    P_hat(:,:,i) = P_plus_dum; % Updated covariance
    P_std(:,i) = (diag(P_hat(:,:,i))).^0.5; % Std deviation
@@ -168,38 +169,38 @@ E = H*P_minus*H'+R;
 Likelihood = ((det(2*pi*E))^0.5)*exp(-0.5*e'*(inv(E))*e);
 end
 
-function xdot = dxdt(state, Input)
-% Model 1 
-x = state;
-K1 = 0.0763; M1 = 0.1134;
-x1dot = K1*x(4)*cos(x(3));
-x2dot = K1*x(4)*sin(x(3));
-x3dot = x(5);
-x4dot = -K1*x(4) + Input(1);
-x5dot = -M1*x(5) + Input(2);
-
-xdot = [x1dot x2dot x3dot x4dot x5dot]';
-end
-
-function xdot = odefun(t1,state,t,U, dt, q)
-% Model 1 
-x = state;
-upsilon = [0 0;
-    0 0;
-    0 0;
-    1 0;
-    0 0];
-Input1 = interp1(t,U(1,:),t1);
-Input2 = interp1(t,U(2,:),t1);
-K1 = 0.0763; M1 = 0.1134;
-x1dot = K1*x(4)*cos(x(3));
-x2dot = K1*x(4)*sin(x(3));
-x3dot = x(5);
-
-x4dot = -K1*x(4) + Input1;
-x5dot = -M1*x(5) + Input2;
-
-xdot = [x1dot x2dot x3dot x4dot x5dot]' + upsilon*sqrt(q*dt)*randn(2,1);
-end
+% function xdot = dxdt(state, Input)
+% % Model 1 
+% x = state;
+% K1 = 0.0763; M1 = 0.1134;
+% x1dot = K1*x(4)*cos(x(3));
+% x2dot = K1*x(4)*sin(x(3));
+% x3dot = x(5);
+% x4dot = -K1*x(4) + Input(1);
+% x5dot = -M1*x(5) + Input(2);
+% 
+% xdot = [x1dot x2dot x3dot x4dot x5dot]';
+% end
+% 
+% function xdot = odefun(t1,state,t,U, dt, q)
+% % Model 1 
+% x = state;
+% upsilon = [0 0;
+%     0 0;
+%     0 0;
+%     1 0;
+%     0 0];
+% Input1 = interp1(t,U(1,:),t1);
+% Input2 = interp1(t,U(2,:),t1);
+% K1 = 0.0763; M1 = 0.1134;
+% x1dot = K1*x(4)*cos(x(3));
+% x2dot = K1*x(4)*sin(x(3));
+% x3dot = x(5);
+% 
+% x4dot = -K1*x(4) + Input1;
+% x5dot = -M1*x(5) + Input2;
+% 
+% xdot = [x1dot x2dot x3dot x4dot x5dot]' + upsilon*sqrt(q*dt)*randn(2,1);
+% end
 weights = Weight;
 end
