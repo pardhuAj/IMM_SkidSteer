@@ -1,0 +1,4 @@
+Row1 - left wheel angular velocity (rad/s) limits (0-6.2 rad/s)
+Row2 - right wheel angular velocity
+Row3 - linear velocity of body (m/s)
+Row4 - angular velocity of body (rad/s)
